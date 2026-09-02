@@ -10,6 +10,9 @@ from crewai.project import CrewBase, agent, crew, task
 class AirtelNexusAiCustomerGrowthPlatformCrew:
     """ICICI Bank Credit Card Cross-Sell AI crew"""
 
+    agents_config = "agents.yaml"
+    tasks_config = "tasks.yaml"
+
     @agent
     def icici_customer_360_profiler(self) -> Agent:
         return Agent(
