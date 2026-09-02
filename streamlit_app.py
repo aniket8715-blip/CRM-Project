@@ -23,7 +23,7 @@ if "GEMINI_API_KEY" in st.secrets:
 from crew import AirtelNexusAiCustomerGrowthPlatformCrew
 
 MAX_RUNS_PER_SESSION = 5  # simple cost guardrail for a public demo link
-DATA_PATH = THIS_DIR / "data" / "icici_customer_360.csv"
+DATA_PATH = THIS_DIR / "icici_customer_360.csv"
 
 
 @st.cache_data
