@@ -1,0 +1,284 @@
+---
+build_customer_360_profiles:
+  description: |-
+    You have been given REAL ICICI Bank customer records below — {num_customers} customers pulled directly from the bank's Customer 360 dataset. Do NOT invent, alter, or add customers. Use only what is given.
+
+    REAL CUSTOMER DATA:
+    {customer_data}
+
+    For each customer produce:
+    - Customer ID, Name, City, Customer Segment, CIBIL Score
+    - Product holdings (Savings / Vehicle Loan / Home Loan / Credit Card) and Credit Card Status
+    - Total Relationship Value (₹) and Cross-Sell Propensity Score
+    - Product Engagement Tier and Digital Segment
+    - Preferred channel and next best cross-sell action (specific card variant or loan top-up)
+  expected_output: |-
+    Output MUST start directly with the markdown table — zero intro text.
+
+    ## Customer 360 — Master Summary Table
+    | Customer ID | Name | City | Segment | CIBIL Score | Card Status | Relationship Value (₹) | Propensity Score | Preferred Channel | Next Best Action |
+    |---|---|---|---|---|---|---|---|---|---|
+    [one row per customer — all cells filled, no dashes, using ONLY the real data provided]
+
+    ---
+
+    ## Funnel Stage Distribution
+    | Card Status | Count | % of Total | Avg Relationship Value (₹) |
+    |---|---|---|---|
+    [one row per distinct Credit_Card_Status found in the data]
+
+    ---
+
+    ## Top 3 Cross-Sell Opportunities
+    - **[Segment]**: Offer [card variant/product], avg propensity [X], [N] eligible customers
+    - **[Segment]**: Offer [card variant/product], avg propensity [X], [N] eligible customers
+    - **[Segment]**: Offer [card variant/product], avg propensity [X], [N] eligible customers
+  agent: icici_customer_360_profiler
+run_ml_predictions:
+  description: |-
+    Using the Customer 360 profiles built from the real ICICI data, generate ML prediction outputs for each customer.
+
+    For each customer produce a single prediction row with:
+    - Customer Name
+    - Approval Likelihood (%) — informed by CIBIL score band, no round numbers, e.g. 78.3%
+    - 12-Month Cross-Sell Revenue Potential (₹) — grounded in the real Total_CrossSell_Revenue_Potential_INR field (portfolio ranges ₹0–₹61,535, avg ₹6,318). NEVER invent a figure wildly outside this observed range.
+    - Recommended Card Variant (Classic / Gold / Platinum / Signature)
+    - Top Channel (Relationship Manager / Mobile App / WhatsApp Banking / Call Centre-IVR / Branch)
+    - Dormancy/Attrition Risk (Low / Med / High) — High only for Approved-Dormant customers
+
+    OUTPUT FORMAT RULES — strictly follow:
+    - Output ONE markdown table only with these exact headers: | Customer Name | Approval Likelihood (%) | 12-Month Cross-Sell Revenue (₹) | Recommended Card Variant | Top Channel | Dormancy Risk |
+    - Every row must be filled — no empty cells, no dashes
+    - After the table, output a 3-line aggregate summary as a bullet list
+    - Do not output any prose before the table
+  expected_output: |-
+    A clearly rendered markdown table with all customers and their 5 prediction columns, followed by:
+    - % of customers at high dormancy/attrition risk
+    - % likely to qualify for Gold or above
+    - Average 12-month cross-sell revenue potential across all customers
+    - Top opportunity segment in one sentence
+  agent: icici_ml_prediction_engine
+  context:
+  - build_customer_360_profiles
+generate_next_best_action_decisions:
+  description: |-
+    Generate a Next Best Action decision for each of the {num_customers} customers aligned to: {business_objective}.
+
+    For each customer decide:
+    - Decision column MUST be exactly one of: **Target** or **No Action** — never "Upgrade" or any other word
+    - Recommended offer (specific card variant or loan top-up product)
+    - Primary channel + contact timing
+    - Play Type: New Card Offer / Reactivation / Upsell / Loan Cross-sell / No Action
+    - Expected 12-month revenue uplift (₹) and confidence score (%)
+
+    Every customer must receive a decision — no exceptions. No Action customers must still show a one-line reason (e.g., "Already Active on Platinum" or "Applied - Rejected, CIBIL below threshold").
+  expected_output: |-
+    Output MUST start directly with the markdown table — zero intro text.
+
+    ## NBA Decision Table
+    | Customer Name | Decision | Recommended Offer | Channel | Play Type | Revenue Uplift (₹/yr) | Confidence (%) |
+    |---|---|---|---|---|---|---|
+    [one row per customer — Decision MUST be "Target" or "No Action" only — all cells filled]
+
+    ---
+
+    ## Play Type Summary
+    | Play Type | Count | Total Revenue Uplift (₹) |
+    |---|---|---|
+
+    ---
+
+    ## Channel Summary
+    | Channel | Count | Avg Revenue Uplift (₹) |
+    |---|---|---|
+
+    ---
+
+    **Total Annual Revenue Uplift: ₹[X]**
+  agent: icici_autonomous_decision_engine
+  context:
+  - run_ml_predictions
+  - build_customer_360_profiles
+simulate_omnichannel_campaign_execution:
+  description: |-
+    Simulate campaign execution for the targeted customers from the NBA decisions, grounded in ICICI's real campaign playbook.
+
+    Produce exactly in this order, nothing else:
+
+    ## Campaign Briefs
+
+    ### 1. New Card Cross-Sell Campaign
+    - Target Segment:
+    - Offer:
+    - Channel:
+    - Duration:
+
+    ### 2. Dormant Card Reactivation Campaign
+    - Target Segment:
+    - Offer:
+    - Channel:
+    - Duration:
+
+    ---
+
+    ## Personalized Messages (Highest-Value Segment)
+
+    **WhatsApp Banking:** [message here]
+
+    **Relationship Manager Talking Points:** [message here]
+
+    **SMS:** [message here]
+
+    ---
+
+    ## Conversion Funnels
+
+    | Campaign | Reach | Open (%) | Response (%) | Conversions | Revenue (₹) |
+    |---|---|---|---|---|---|
+    | New Card Cross-Sell | ... | ... | ... | ... | ... |
+    | Dormant Reactivation | ... | ... | ... | ... | ... |
+
+    **Total Simulated Revenue: ₹[X]**
+
+    OUTPUT RULES:
+    - Use exact markdown headers and table above
+    - No prose paragraphs before the headers
+    - All table cells must be filled
+  expected_output: Exactly 2 campaign briefs, 3 personalized messages, 1 conversion
+    funnel table, and total revenue — all in clean markdown with no filler prose.
+  agent: icici_omnichannel_campaign_orchestrator
+  context:
+  - generate_next_best_action_decisions
+optimize_portfolio_and_calculate_roi:
+  description: |-
+    Produce a portfolio-level optimization report for ICICI Bank leadership aligned to: {business_objective}.
+
+    Scale the {num_customers}-customer pilot results to represent an illustrative eligible base of 500,000 existing ICICI Savings/Loan customers without an active credit card (state this scaling assumption explicitly).
+
+    Include:
+    1. Portfolio action matrix: customers by Play Type
+    2. Revenue projection scaled to 500,000 eligible customers — low/base/high in ₹ Crore, anchored to the real portfolio average cross-sell revenue potential of ₹6,318/customer/year:
+       - Low: 3% conversion = 15,000 customers × ₹6,318 avg = ₹9.48 Crore
+       - Base: 8% conversion = 40,000 customers × ₹6,318 avg = ₹25.27 Crore
+       - High: 15% conversion = 75,000 customers × ₹6,318 avg = ₹47.39 Crore
+       Show both this-cycle Uplift (₹ Crore) and Annualized Uplift (₹ Crore) as separate columns.
+    3. Channel productivity table: which channel converts which segment best, with illustrative cost-to-conversion ratios
+    4. Top 3 immediate priority actions for ICICI's CMO / Head of Cards
+  expected_output: |-
+    Output MUST start directly with the markdown table — zero intro text.
+
+    ## Portfolio Action Matrix
+    | Play Type | Customer Count | Revenue Uplift (₹) |
+    |---|---|---|
+
+    ---
+
+    ## Revenue Projection — Scaled to 500,000 Eligible Customers
+    | Scenario | Conversion Rate | Customers Converted | Uplift (₹ Crore) |
+    |---|---|---|---|
+    | Low | 3% | 15,000 | ₹9.48 |
+    | Base | 8% | 40,000 | ₹25.27 |
+    | High | 15% | 75,000 | ₹47.39 |
+
+    ---
+
+    ## Channel Productivity Table
+    | Channel | Best-Fit Segment | Illustrative Cost-to-Conversion Ratio |
+    |---|---|---|
+
+    ---
+
+    ## Top 3 Priority Actions for CMO / Head of Cards
+    1. [Action] — Expected impact: ₹[X] Crore
+    2. [Action] — Expected impact: ₹[X] Crore
+    3. [Action] — Expected impact: ₹[X] Crore
+  agent: icici_portfolio_optimization_analyst
+  context:
+  - simulate_omnichannel_campaign_execution
+  - generate_next_best_action_decisions
+generate_executive_intelligence_brief:
+  description: |-
+    Write the ICICI Bank Executive Intelligence Brief answering: How can ICICI Bank use AI, ML and its existing customer data to drive effective credit card cross-sell targeting, channel productivity, and customer engagement?
+
+    OUTPUT FORMAT — use exactly these sections in order:
+
+    ## Executive Summary
+    [4 sentences: what AI did, what it found, what it recommends, total revenue at stake in ₹ Crore]
+
+    ---
+
+    ## Customer 360 Snapshot
+    | Name | City | Segment | Card Status | Relationship Value (₹) | Propensity Score |
+    [one row per customer]
+
+    ---
+
+    ## ML Predictions Summary
+    | Customer Name | Approval Likelihood (%) | 12-Month Cross-Sell Revenue (₹) | Recommended Card Variant | Top Channel |
+    [one row per customer]
+
+    ---
+
+    ## Next Best Action Decisions
+    | Customer Name | Decision | Recommended Offer | Channel | Play Type | Revenue Uplift (₹/yr) |
+    [one row per customer]
+
+    ---
+
+    ## Campaign Execution Summary
+    | Campaign | Target Segment | Channel | Offer | Conversions | Revenue (₹) |
+    [one row per campaign]
+
+    ---
+
+    ## Portfolio ROI Summary
+    | Scenario | Conversion Rate | Customers Converted | Uplift (₹ Cr) |
+    | Low | 3% | 15,000 | [X] |
+    | Base | 8% | 40,000 | [X] |
+    | High | 15% | 75,000 | [X] |
+
+    ---
+
+    ## AI Pipeline vs Legacy Mass-Marketing
+    | Feature | AI Pipeline | Legacy Mass-Marketing |
+    [3 rows]
+
+    ---
+
+    ## Recommended Next Steps
+    1. [Action] — Expected impact: ₹[X] Crore
+    2. [Action] — Expected impact: ₹[X] Crore
+    3. [Action] — Expected impact: ₹[X] Crore
+
+    OUTPUT RULES:
+    - Start directly with ## Executive Summary — zero intro prose
+    - Every table must be fully populated — no dashes or empty cells
+    - All ₹ figures must be traceable to pipeline outputs
+  expected_output: A complete Executive Intelligence Brief in markdown with all 7
+    sections fully populated — every customer visible in every relevant table, correct
+    portfolio math, and 3 next steps with ₹ impact. Max 700 words.
+  agent: icici_executive_ai_copilot
+  context:
+  - optimize_portfolio_and_calculate_roi
+  - simulate_omnichannel_campaign_execution
+  - generate_next_best_action_decisions
+  - run_ml_predictions
+  - build_customer_360_profiles
+run_continuous_learning_and_platform_improvement:
+  description: |-
+    Close the intelligence loop with a concise learning report based on this cycle's outputs.
+
+    Cover:
+    1. What worked: top performing channel and segment with numbers
+    2. What didn't: one underperforming decision with root cause
+    3. Two specific ML model threshold adjustments recommended (with exact values)
+    4. Compounding Intelligence Score — express ALL improvements as absolute percentage points (e.g., "conversion rate improves from 5% to 8%, a +3pp gain"), NOT relative % changes
+  expected_output: |-
+    A concise Continuous Learning Report in markdown:
+    1. Win/Loss analysis table (2 rows) — each cell must contain ONE short sentence only, no line breaks or \n inside cells
+    2. ML recalibration log (2 specific adjustments with before/after threshold values)
+    3. Compounding Intelligence Score with ALL THREE metrics expressed as absolute pp or ₹: conversion rate %, approval-risk reduction %, and ₹ cross-sell revenue gain per customer
+    4. One-paragraph "What ICICI Learned This Cycle" summary
+  agent: icici_continuous_learning_engine
+  context:
+  - generate_executive_intelligence_brief
